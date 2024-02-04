@@ -31,7 +31,7 @@ def score_text(text: bytes) -> float:
             score += letter_freq[char.lower()]
     return score
 
-def break_single_byte_xor(ciphertext: bytes) -> str:
+def break_single_byte_xor(ciphertext: bytes) -> bytes:
     """Break a single-byte XOR cipher"""
     scores = {}
     for i in range(256):
@@ -39,7 +39,8 @@ def break_single_byte_xor(ciphertext: bytes) -> str:
         plaintext = hex_xor(ciphertext, keystream)
         scores[i] = score_text(plaintext)
     key = max(scores, key=scores.get)
-    return hex_xor(ciphertext, bytes([key] * len(ciphertext)))
+    message = hex_xor(ciphertext, bytes([key] * len(ciphertext)))
+    return {"message": message, "key": key}
 
 def detect_single_char_xor(filename: str) -> bytes:
     """Detect the single character XOR cipher from a file"""
@@ -47,13 +48,47 @@ def detect_single_char_xor(filename: str) -> bytes:
     with open(filename) as data:
         for line in data:
             ciphertext = binascii.unhexlify(line.strip())
-            plaintext = break_single_byte_xor(ciphertext)
+            plaintext = break_single_byte_xor(ciphertext)['message']
             candidates[plaintext] = score_text(plaintext)
     best_candidate = max(candidates, key=candidates.get)
-    print(best_candidate)
     return best_candidate
 
 def repeating_key_xor(ciphertext: bytes, key: bytes) -> bytes:
     """Break a repeating-key XOR cipher"""
     keystream = key * (len(ciphertext) // len(key)) + key[:len(ciphertext) % len(key)]
     return binascii.hexlify(hex_xor(ciphertext, keystream))
+
+def hamming_distance(s1: bytes, s2: bytes) -> int:
+    """Calculate the Hamming distance between two strings"""
+    return sum([bin(byte).count('1') for byte in hex_xor(s1, s2)])
+
+def break_repeating_key_xor(filename: str) -> bytes:
+    """Break a repeating-key XOR cipher from a file"""
+    with open(filename) as data:
+        ciphertext = base64.b64decode(data.read())
+        
+        # Determine the top 3 key sizes
+        distances = {}
+        for keysize in range(2, 41):
+            blocks = [ciphertext[i:i+keysize] for i in range(0, len(ciphertext), keysize)][:4]
+            distance = 0
+            for i in range(len(blocks) - 1):
+                distance += hamming_distance(blocks[i], blocks[i+1])
+            distances[keysize] = distance / keysize
+        possible_key_sizes = sorted(distances, key=distances.get)[:3]
+
+        # Determine the most likely key for each possible key size
+        possible_solutions = {}
+        for k in possible_key_sizes:
+            key = b''
+            parts = []
+            for i in range(k):
+                part = break_single_byte_xor(ciphertext[i::k])
+                key += bytes([part['key']])
+            possible_solutions[k] = (binascii.unhexlify(repeating_key_xor(ciphertext, key)), key)
+        
+        # Return the most likely solution
+        solution = possible_solutions[max(possible_solutions, key=lambda x: score_text(possible_solutions[x][0]))]
+        # print("Key:", solution[1].decode())
+        # print("Plaintext:", solution[0].decode())
+        return solution
