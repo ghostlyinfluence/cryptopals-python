@@ -52,3 +52,8 @@ def detect_single_char_xor(filename: str) -> bytes:
     best_candidate = max(candidates, key=candidates.get)
     print(best_candidate)
     return best_candidate
+
+def repeating_key_xor(ciphertext: bytes, key: bytes) -> bytes:
+    """Break a repeating-key XOR cipher"""
+    keystream = key * (len(ciphertext) // len(key)) + key[:len(ciphertext) % len(key)]
+    return binascii.hexlify(hex_xor(ciphertext, keystream))
