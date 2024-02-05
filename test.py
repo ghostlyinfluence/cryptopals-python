@@ -46,3 +46,7 @@ def test_detect_aes_128_ecb():
     """Test the detect aes 128 ecb function"""
     filename = "8.txt"
     assert cryptopals.detect_aes_128_ecb(filename) == True
+
+def test_pkcs7_padding():
+    """Test the pkcs7 padding function"""
+    assert cryptopals.pad_pkcs7(b"YELLOW SUBMARINE", 20) == b"YELLOW SUBMARINE\x04\x04\x04\x04"

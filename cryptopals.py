@@ -121,3 +121,8 @@ def detect_aes_128_ecb(filename: str) -> bool:
         ciphertexts = [binascii.unhexlify(line.strip()) for line in data]
         hits = [ctxt for ctxt in ciphertexts if has_repeated_blocks(ctxt)]
         return bool(len(hits))
+
+def pad_pkcs7(data: bytes, blocksize: int=20) -> bytes:
+    """Pad data using PKCS#7"""
+    padding = (blocksize - len(data)) % blocksize
+    return data + (bytes([padding]) * padding)
