@@ -1,4 +1,4 @@
-# create test using pytest to test a hex to base64 function
+# -*- coding: utf-8 -*-
 
 import cryptopals
 import pytest
@@ -41,3 +41,8 @@ def test_break_aes_128_ecb():
     """Test the break aes 128 ecb function"""
     filename = "7.txt"
     assert cryptopals.break_aes_128_ecb(filename)[:50] == b"I'm back and I'm ringin' the bell \nA rockin' on th"
+
+def test_detect_aes_128_ecb():
+    """Test the detect aes 128 ecb function"""
+    filename = "8.txt"
+    assert cryptopals.detect_aes_128_ecb(filename) == True

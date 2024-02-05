@@ -1,4 +1,6 @@
 
+# -*- coding: utf-8 -*-
+
 import binascii
 import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -106,3 +108,16 @@ def break_aes_128_ecb(filename: str) -> bytes:
         decryptor = cipher.decryptor()
         plaintext = decryptor.update(ciphertext) + decryptor.finalize()
         return plaintext
+
+def has_repeated_blocks(ciphertext: bytes, blocksize: int=16) -> bool:
+    """Check if a ciphertext has repeated blocks"""
+    blocks = [ciphertext[i:i+blocksize] for i in range(0, len(ciphertext), blocksize)]
+    num_dupes =  len(blocks) - len(set(blocks))
+    return num_dupes
+
+def detect_aes_128_ecb(filename: str) -> bool:
+    """Detect an AES-128 ECB cipher from a file"""
+    with open(filename) as data:
+        ciphertexts = [binascii.unhexlify(line.strip()) for line in data]
+        hits = [ctxt for ctxt in ciphertexts if has_repeated_blocks(ctxt)]
+        return bool(len(hits))
