@@ -126,3 +126,38 @@ def pad_pkcs7(data: bytes, blocksize: int=20) -> bytes:
     """Pad data using PKCS#7"""
     padding = (blocksize - len(data)) % blocksize
     return data + (bytes([padding]) * padding)
+
+def encrypt_aes_128_ecb(plaintext: bytes, key: bytes) -> bytes:
+    """Encrypt plaintext using AES-128 ECB"""
+    cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
+    encryptor = cipher.encryptor()
+    return encryptor.update(plaintext) + encryptor.finalize()
+
+def decrypt_aes_128_ecb(ciphertext: bytes, key: bytes) -> bytes:
+    """Decrypt ciphertext using AES-128 ECB"""
+    cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
+    decryptor = cipher.decryptor()
+    return decryptor.update(ciphertext) + decryptor.finalize()
+
+def encrypt_aes_128_cbc(plaintext: bytes, key: bytes, iv: bytes) -> bytes:
+    """Encrypt plaintext using AES-128 CBC"""
+    ciphertext = b''
+    previous = iv
+    for i in range(0, len(plaintext), 16):
+        block = plaintext[i:i+16]
+        block = pad_pkcs7(block)
+        ciphertext_block = encrypt_aes_128_ecb(hex_xor(block, previous), key)
+        ciphertext += ciphertext_block
+        previous = ciphertext_block
+    return ciphertext
+
+def decrypt_aes_128_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
+    """Decrypt ciphertext using AES-128 CBC"""
+    plaintext = b''
+    previous = iv
+    for i in range(0, len(ciphertext), 16):
+        block = ciphertext[i:i+16]
+        decrypted_block = decrypt_aes_128_ecb(block, key)
+        plaintext += hex_xor(decrypted_block, previous)
+        previous = block
+    return plaintext

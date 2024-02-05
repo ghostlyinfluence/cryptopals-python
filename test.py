@@ -2,6 +2,7 @@
 
 import cryptopals
 import pytest
+import os
 
 import binascii
 
@@ -50,3 +51,23 @@ def test_detect_aes_128_ecb():
 def test_pkcs7_padding():
     """Test the pkcs7 padding function"""
     assert cryptopals.pad_pkcs7(b"YELLOW SUBMARINE", 20) == b"YELLOW SUBMARINE\x04\x04\x04\x04"
+
+def test_cbc_mode():
+    """Test the cbc mode function"""
+    # Test ecb mode first
+    msg = os.urandom(16)
+    key = os.urandom(16)
+    ciphertext = cryptopals.encrypt_aes_128_ecb(msg, key)
+    plaintext = cryptopals.decrypt_aes_128_ecb(ciphertext, key)
+    assert plaintext == msg
+
+    # Test cbc mode
+    # msg = open("10.txt").read().encode()
+    # key = b"YELLOW SUBMARINE"
+    # iv = b"\x00" * 16
+    msg = os.urandom(16)
+    key = os.urandom(16)
+    iv = os.urandom(16)
+    ciphertext = cryptopals.encrypt_aes_128_cbc(msg, key, iv)
+    plaintext = cryptopals.decrypt_aes_128_cbc(ciphertext, key, iv)
+    assert plaintext == msg
