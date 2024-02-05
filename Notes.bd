@@ -3,3 +3,7 @@ Notes for writing the paper:
 Hamming distance and the importance of it + how it works
     https://sciencing.com/how-to-calculate-hamming-distance-12751770.html
 
+There is some oddness associated with key sizes. Small key sizes like 2 and 3 actually scored better than 29 even when normalized. I had to carry the top 3 and ultimatly score the plaintext to see what was best.
+
+Using the cryptography library for python
+    https://cryptography.io/en/latest/

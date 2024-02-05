@@ -1,6 +1,10 @@
 
 import binascii
 import base64
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+
+backend = default_backend()
 
 # Create a function that converts a hex string to base64
 def hex_to_base64(hex_string: str) -> str:
@@ -92,3 +96,13 @@ def break_repeating_key_xor(filename: str) -> bytes:
         # print("Key:", solution[1].decode())
         # print("Plaintext:", solution[0].decode())
         return solution
+
+def break_aes_128_ecb(filename: str) -> bytes:
+    """Break an AES-128 ECB cipher from a file"""
+    with open(filename) as data:
+        ciphertext = base64.b64decode(data.read())
+        key = b'YELLOW SUBMARINE'
+        cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
+        decryptor = cipher.decryptor()
+        plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+        return plaintext

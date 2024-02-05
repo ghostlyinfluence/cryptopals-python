@@ -36,3 +36,8 @@ def test_break_repeating_key_xor():
     """Test the break repeating key xor function"""
     filename = "6.txt"
     assert cryptopals.break_repeating_key_xor(filename)[1] == b"Terminator X: Bring the noise"
+
+def test_break_aes_128_ecb():
+    """Test the break aes 128 ecb function"""
+    filename = "7.txt"
+    assert cryptopals.break_aes_128_ecb(filename)[:50] == b"I'm back and I'm ringin' the bell \nA rockin' on th"
