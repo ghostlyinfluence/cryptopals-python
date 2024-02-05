@@ -5,6 +5,8 @@ import binascii
 import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
+import random
+import os
 
 backend = default_backend()
 
@@ -113,31 +115,45 @@ def has_repeated_blocks(ciphertext: bytes, blocksize: int=16) -> bool:
     """Check if a ciphertext has repeated blocks"""
     blocks = [ciphertext[i:i+blocksize] for i in range(0, len(ciphertext), blocksize)]
     num_dupes =  len(blocks) - len(set(blocks))
-    return num_dupes
+    return bool(num_dupes)
+
+def test_ecb_128(ciphertexts: bytes, blocksize: int=16) -> bool:
+    """Test if a ciphertext is encrypted using AES-128 ECB mode"""
+    hits = [ctxt for ctxt in ciphertexts if has_repeated_blocks(ctxt)]
+    return bool(len(hits))
 
 def detect_aes_128_ecb(filename: str) -> bool:
     """Detect an AES-128 ECB cipher from a file"""
     with open(filename) as data:
         ciphertexts = [binascii.unhexlify(line.strip()) for line in data]
-        hits = [ctxt for ctxt in ciphertexts if has_repeated_blocks(ctxt)]
-        return bool(len(hits))
+        return test_ecb_128(ciphertexts)
 
 def pad_pkcs7(data: bytes, blocksize: int=20) -> bytes:
     """Pad data using PKCS#7"""
     padding = (blocksize - len(data)) % blocksize
     return data + (bytes([padding]) * padding)
 
+def unpad_pkcs7(data: bytes) -> bytes:
+    """Unpad data using PKCS#7"""
+    padding = data[-1]
+    if all([byte == padding for byte in data[-padding:]]):
+        return data[:-padding]
+    else:
+        return data
+
 def encrypt_aes_128_ecb(plaintext: bytes, key: bytes) -> bytes:
     """Encrypt plaintext using AES-128 ECB"""
+    padded_msg = pad_pkcs7(plaintext, 16)
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
     encryptor = cipher.encryptor()
-    return encryptor.update(plaintext) + encryptor.finalize()
+    return encryptor.update(padded_msg) + encryptor.finalize()
 
 def decrypt_aes_128_ecb(ciphertext: bytes, key: bytes) -> bytes:
     """Decrypt ciphertext using AES-128 ECB"""
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
     decryptor = cipher.decryptor()
-    return decryptor.update(ciphertext) + decryptor.finalize()
+    plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+    return unpad_pkcs7(plaintext)
 
 def encrypt_aes_128_cbc(plaintext: bytes, key: bytes, iv: bytes) -> bytes:
     """Encrypt plaintext using AES-128 CBC"""
@@ -161,3 +177,14 @@ def decrypt_aes_128_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
         plaintext += hex_xor(decrypted_block, previous)
         previous = block
     return plaintext
+
+def encrypt_oracle(plaintext: bytes, mode: str=random.choice(["ECB", "CBC"])) -> bytes:
+    """Encrypt plaintext using a random key and AES-128 ECB or CBC mode"""
+    key = os.urandom(16)
+    iv = os.urandom(16)
+    plaintext = os.urandom(random.randint(5,10)) + plaintext + os.urandom(random.randint(5,10))
+    plaintext = pad_pkcs7(plaintext, 16)
+    if mode == "ECB":
+        return encrypt_aes_128_ecb(plaintext, key)
+    elif mode == "CBC":
+        return encrypt_aes_128_cbc(plaintext, key, iv)

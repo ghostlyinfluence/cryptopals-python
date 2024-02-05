@@ -2,9 +2,10 @@
 
 import cryptopals
 import pytest
-import os
 
 import binascii
+import os
+import random
 
 def test_hex_to_base64():
     """Test the hex_to_base64 function"""
@@ -71,3 +72,11 @@ def test_cbc_mode():
     ciphertext = cryptopals.encrypt_aes_128_cbc(msg, key, iv)
     plaintext = cryptopals.decrypt_aes_128_cbc(ciphertext, key, iv)
     assert plaintext == msg
+
+def test_encrypt_oracle():
+    """Test the encrypt oracle function"""
+    mode = random.choice(["ECB", "CBC"])
+    msg = (b'A'* 50) + os.urandom(50)
+    ciphertext = [cryptopals.encrypt_oracle(msg, mode)]
+    detected_mode = "ECB" if cryptopals.test_ecb_128(ciphertext) else "CBC"
+    assert detected_mode == mode
