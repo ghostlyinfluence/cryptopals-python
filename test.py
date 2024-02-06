@@ -6,6 +6,7 @@ import pytest
 import binascii
 import os
 import random
+import base64
 
 def test_hex_to_base64():
     """Test the hex_to_base64 function"""
@@ -80,3 +81,17 @@ def test_encrypt_oracle():
     ciphertext = [cryptopals.encrypt_oracle(msg, mode)]
     detected_mode = "ECB" if cryptopals.test_ecb_128(ciphertext) else "CBC"
     assert detected_mode == mode
+
+def test_ecb_oracle():
+    """Test the ecb oracle function"""
+    DATA_TO_APPEND = base64.b64decode(
+        "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg"
+        "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
+        "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
+        "YnkK"
+    )
+    oracle = cryptopals.ECB_Oracle(append_data=DATA_TO_APPEND)
+    block_size = cryptopals.find_blocksize(oracle)
+    assert block_size == 16
+    assert cryptopals.test_ecb_128([oracle.encrypt(b'A'*64)])
+    assert cryptopals.break_ecb_byte_by_byte(oracle) == DATA_TO_APPEND + b"\x01"

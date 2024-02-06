@@ -188,3 +188,39 @@ def encrypt_oracle(plaintext: bytes, mode: str=random.choice(["ECB", "CBC"])) ->
         return encrypt_aes_128_ecb(plaintext, key)
     elif mode == "CBC":
         return encrypt_aes_128_cbc(plaintext, key, iv)
+
+class ECB_Oracle:
+    def __init__(self, append_data: bytes, key: bytes=os.urandom(16)):
+        self.key = key
+        self.append_data = append_data
+
+    def encrypt(self, plaintext: bytes) -> bytes:
+        """Encrypt plaintext using AES-128 ECB"""
+        return encrypt_aes_128_ecb(plaintext + self.append_data, self.key)
+
+def find_blocksize(oracle: ECB_Oracle) -> int:
+    """Find the blocksize of the oracle"""
+    prev_len = len(oracle.encrypt(b''))
+    for i in range(1, 256):
+        plaintext = b'A' * i
+        new_len = len(oracle.encrypt(plaintext))
+        if new_len != prev_len:
+            return new_len - prev_len
+        prev_len = new_len
+    return 0
+
+def break_ecb_byte_by_byte(oracle: ECB_Oracle) -> bytes:
+    """Break an AES-128 ECB cipher byte by byte"""
+    blocksize = find_blocksize(oracle)
+    plaintext = b''
+    for i in range(len(oracle.encrypt(b''))):
+        block_num = i // blocksize
+        block_start = block_num * blocksize
+        block_end = (block_num + 1) * blocksize
+        block = oracle.encrypt(b'A' * (blocksize - 1 - (i % blocksize)))[block_start:block_end]
+        for j in range(256):
+            test_block = oracle.encrypt(b'A' * (blocksize - 1 - (i % blocksize)) + plaintext + bytes([j]))[block_start:block_end]
+            if test_block == block:
+                plaintext += bytes([j])
+                break
+    return plaintext
