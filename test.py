@@ -95,3 +95,24 @@ def test_ecb_oracle():
     assert block_size == 16
     assert cryptopals.test_ecb_128([oracle.encrypt(b'A'*64)])
     assert cryptopals.break_ecb_byte_by_byte(oracle) == DATA_TO_APPEND + b"\x01"
+
+def test_ecb_cut_paste():
+    """Test the ecb cut paste function"""
+    manager = cryptopals.Profile_Manager()
+    assert manager.profile_for(b"email@example.com") == b'email=email@example.com&uid=10&role=user'
+    assert manager.structured_cookie_data(b'email=email@example.com&uid=10&role=user') == {'email': 'email@example.com', 'role': 'user', 'uid': '10'}
+    encrypted_profile = manager.encrypt_profile(b'email@example.com')
+    assert manager.decrypt_profile(encrypted_profile) == {'email': 'email@example.com', 'role': 'user', 'uid': '10'}
+
+    block_size = 16
+    target_email = b"eeeeeeeeeeeemail@attacker.com"
+
+    ciphertext = manager.encrypt_profile(target_email)
+    plaintext = cryptopals.pad_pkcs7(b"admin", 16)
+    payload_email = b"nextBlockShouldSt@rt.Here:" + plaintext
+
+    ciphertext_t = manager.encrypt_profile(payload_email)
+    block = ciphertext_t[2*block_size:3*block_size]
+    crafted_ciphertext = ciphertext[:-block_size] + block
+    profile = manager.decrypt_profile(crafted_ciphertext)
+    assert profile['role'] == 'admin'

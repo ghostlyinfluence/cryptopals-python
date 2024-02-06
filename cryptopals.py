@@ -224,3 +224,28 @@ def break_ecb_byte_by_byte(oracle: ECB_Oracle) -> bytes:
                 plaintext += bytes([j])
                 break
     return plaintext
+
+class Profile_Manager:
+    def __init__(self):
+        self.key = os.urandom(16)
+
+    @staticmethod
+    def structured_cookie_data(data: bytes) -> bytes:
+        """Parse and structure cookie data"""
+        data = data.decode().split('&')
+        data = [d.split('=') for d in data]
+        data = dict(data)
+        return data
+
+    @staticmethod
+    def profile_for(email: bytes) -> bytes:
+        """Create a user profile for an email"""
+        return b'email=' + email + b'&uid=10&role=user'
+
+    def encrypt_profile(self, email: bytes) -> bytes:
+        """Get the encrypted profile for an email"""
+        return encrypt_aes_128_ecb(self.profile_for(email), self.key)
+
+    def decrypt_profile(self, ciphertext: bytes) -> bytes:
+        """Decrypt a user profile"""
+        return self.structured_cookie_data(decrypt_aes_128_ecb(ciphertext, self.key))
