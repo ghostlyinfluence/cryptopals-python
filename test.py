@@ -116,3 +116,15 @@ def test_ecb_cut_paste():
     crafted_ciphertext = ciphertext[:-block_size] + block
     profile = manager.decrypt_profile(crafted_ciphertext)
     assert profile['role'] == 'admin'
+
+def test_oracle_14():
+    """Test the oracle 14 function"""
+    ciphertext = base64.b64decode(
+        "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg"
+        "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
+        "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
+        "YnkK"
+    )
+    oracle = cryptopals.Oracle_14(target_bytes=ciphertext)
+    assert cryptopals.break_ecb_byte_by_byte_14(oracle) == b"Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n\x01"
+    # assert cryptopals.break_ecb_byte_by_byte(oracle) == oracle.append_data + b"\x01"

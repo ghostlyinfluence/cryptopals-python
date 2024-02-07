@@ -249,3 +249,93 @@ class Profile_Manager:
     def decrypt_profile(self, ciphertext: bytes) -> bytes:
         """Decrypt a user profile"""
         return self.structured_cookie_data(decrypt_aes_128_ecb(ciphertext, self.key))
+
+class Oracle_14:
+    def __init__(self, target_bytes: bytes):
+        self.key = os.urandom(16)
+        self.random_prefix = os.urandom(random.randint(5,10))
+        self.target_bytes = target_bytes
+
+    def encrypt(self, plaintext: bytes) -> bytes:
+        """Encrypt plaintext using AES-128 ECB"""
+        return encrypt_aes_128_ecb(self.random_prefix + plaintext + self.target_bytes, self.key)
+
+def get_next_byte(prefix_length: int, block_size: int, oracle: Oracle_14, plaintext: bytes) -> bytes:
+    """Get the next byte of the target bytes"""
+    length = (block_size - prefix_length - (1 + len(plaintext))) % block_size
+    dummy_input = b'A' * length
+    crack_length = prefix_length + length + len(plaintext) + 1
+    real_cipher = oracle.encrypt(dummy_input)
+    for j in range(256):
+        fake_cipher = oracle.encrypt(dummy_input + plaintext + bytes([j]))
+        if fake_cipher[:crack_length] == real_cipher[:crack_length]:
+            return bytes([j])
+    return b''
+
+def has_equal_blocks(ciphertext: bytes, block_size: int) -> bool:
+    """Check if a ciphertext has equal blocks"""
+    blocks = [ciphertext[i:i+block_size] for i in range(0, len(ciphertext), block_size)]
+    num_dupes =  len(blocks) - len(set(blocks))
+    return bool(num_dupes)
+
+def find_prefix_length(oracle: Oracle_14, block_size: int) -> int:
+    """Find the length of the random prefix"""
+    for i in range(block_size):
+        plaintext = b'A' * (block_size * 2 + i)
+        ciphertext = oracle.encrypt(plaintext)
+        for j in range(0, len(ciphertext) - block_size, block_size):
+            if ciphertext[j:j+block_size] == ciphertext[j+block_size:j+block_size*2]:
+                return j - i
+    return 0
+
+def break_ecb_byte_by_byte_14(oracle: Oracle_14) -> bytes:
+    """Break an AES-128 ECB cipher byte by byte"""
+    block_size = find_blocksize(oracle)
+    prefix_length = find_prefix_length(oracle, block_size)
+    unknown_bytes = len(oracle.encrypt(b'')) - prefix_length
+    plaintext = b''
+    for i in range(unknown_bytes):
+        plaintext += get_next_byte(prefix_length, block_size, oracle, plaintext)
+    return plaintext
+
+
+    # def find_block_size(self) -> int:
+    #     """Find the block size of the oracle"""
+    #     prev_len = len(self.encrypt(b''))
+    #     for i in range(1, 256):
+    #         plaintext = b'A' * i
+    #         new_len = len(self.encrypt(plaintext))
+    #         if new_len != prev_len:
+    #             self.vaules = prev_len-i
+    #             return new_len - prev_len
+    #         prev_len = new_len
+    #     return 0
+
+    # def find_prefix_length(self) -> int:
+    #     """Find the length of the random prefix"""
+    #     for i in range(self.block_size):
+    #         plaintext = b'A' * (self.block_size * 2 + i)
+    #         ciphertext = self.encrypt(plaintext)
+    #         for j in range(0, len(ciphertext) - self.block_size, self.block_size):
+    #             if ciphertext[j:j+self.block_size] == ciphertext[j+self.block_size:j+self.block_size*2]:
+    #                 return j - i
+    #     return 0
+
+    # def target_size(self) -> int:
+    #     """Find the size of the target bytes"""
+    #     return self.vaules - self.prefix_length
+    
+    # def decrypt(self) -> bytes:
+    #     """Decrypt the target bytes"""
+    #     plaintext = b''
+    #     for i in range(self.target_size()):
+    #         block_num = i // self.block_size
+    #         block_start = block_num * self.block_size
+    #         block_end = (block_num + 1) * self.block_size
+    #         block = self.encrypt(b'A' * (self.block_size - 1 - (i % self.block_size)))[block_start:block_end]
+    #         for j in range(256):
+    #             test_block = self.encrypt(b'A' * (self.block_size - 1 - (i % self.block_size)) + plaintext + bytes([j]))[block_start:block_end]
+    #             if test_block == block:
+    #                 plaintext += bytes([j])
+    #                 break
+    #     return plaintext
